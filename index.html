@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Systems Engineering Mastery Pathway</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050505; overflow: hidden; }
+    #root { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useMemo, useRef, useCallback } = React;
+
+
+const PC = [
+  "#00e676","#29b6f6","#5c6bc0","#ffa726",
+  "#ef5350","#ab47bc","#ff7043","#26a69a",
+  "#ec407a","#ffd54f","#80cbc4",
+];
+
+const PL = [
+  "Mathematical & Architectural Bedrock",
+  "OS Theory & Kernel Entry",
+  "Kernel Subsystems",
+  "Systems Programming Craft",
+  "High-Performance Networking",
+  "Storage & Persistence",
+  "GPU Architecture & HPC",
+  "Distributed Systems",
+  "Security & Observability",
+  "Synthesis & Research",
+  "Hardware Engineering",
+];
+
+const NODES = [
+  // Phase 0
+  { id:"LA",   phase:0, label:"Linear Algebra",                sub:"Strang · Horn & Johnson · Axler",
+    detail:"Gilbert Strang MIT 18.06, Horn & Johnson Matrix Analysis 2e, Axler Linear Algebra Done Right 3e. Eigendecomposition, SVD, tensor products, positive-definite matrices, spectral theorem. Non-negotiable for GPU kernel math, roofline arithmetic intensity calculations, and the linear algebra underpinning BLAS/LAPACK-level HPC routines. Understand Gram-Schmidt — it appears verbatim inside orthogonal QR factorizations used in numerical linear solvers." },
+  { id:"DM",   phase:0, label:"Discrete Mathematics",          sub:"Rosen · Knuth Concrete Mathematics · Sipser",
+    detail:"Rosen Discrete Mathematics 8e, Knuth-Graham-Patashnik Concrete Mathematics, Sipser Introduction to the Theory of Computation. Graph theory (DAGs, max-flow, strongly-connected components, topological sort), formal logic (propositional, first-order, temporal), recurrence relations, generating functions, automata theory (DFA, NFA, PDA, TM). Foundation for scheduler correctness proofs, consensus algorithm termination arguments, hash function design, and model checking. Sipser is mandatory before formal verification tools." },
+  { id:"PR",   phase:0, label:"Probability & Statistics",      sub:"Feller Vol 1-2 · Cover & Thomas · Mitzenmacher & Upfal",
+    detail:"Feller An Introduction to Probability Theory and Its Applications Vols 1-2, Cover & Thomas Elements of Information Theory 2e, Mitzenmacher & Upfal Probability and Computing. Markov chains, queueing theory (M/M/1, M/G/1, M/D/1), entropy, concentration inequalities (Chernoff, Azuma, McDiarmid). Required for gossip protocol convergence proofs, randomized load balancers, Monte Carlo profiling, and Bloom filter false-positive rate derivation." },
+  { id:"NA",   phase:0, label:"Numerical Analysis",            sub:"Trefethen & Bau · Golub & Van Loan · Higham ASNA",
+    detail:"Trefethen & Bau Numerical Linear Algebra, Golub & Van Loan Matrix Computations 4e, Higham Accuracy and Stability of Numerical Algorithms 2e. IEEE 754 floating-point arithmetic (round-to-nearest, subnormals, ULP errors), numerical stability, iterative solvers (CG, GMRES, BiCGSTAB), LU/QR/SVD factorizations, condition number analysis. Required for writing cryptographic field arithmetic without precision loss and for HPC kernel validation." },
+  { id:"NT",   phase:0, label:"Number Theory & Abstract Algebra", sub:"Hardy & Wright · Dummit & Foote · Washington EC",
+    detail:"Hardy & Wright An Introduction to the Theory of Numbers 6e, Dummit & Foote Abstract Algebra 3e, Washington elliptic curve cryptography texts. Modular arithmetic, Euler's theorem, CRT, groups, rings, fields, finite fields GF(2^n), polynomial arithmetic over F_2, elliptic curves (point addition, scalar multiplication, Weierstrass form). Foundation for AES (GF(2^8)), ECC (ECDH, X25519, Ed25519). Without this, crypto implementation is cargo-cult copy-paste." },
+  { id:"CA",   phase:0, label:"Computer Architecture",          sub:"Patterson & Hennessy · Intel SDM Vol 3 · AMD64 APM Vol 2",
+    detail:"Patterson & Hennessy Computer Organization and Design RISC-V edition, Intel 64 and IA-32 Architectures SDM Volume 3 (paging, segmentation, TSS, APIC, MSRs, VMX), AMD64 Architecture Programmer's Manual Volume 2. Cache hierarchy (L1i/L1d/L2/L3/LLC, inclusion vs exclusion policies, prefetcher), out-of-order execution (ROB, reservation stations, Tomasulo's algorithm), branch prediction (TAGE predictor, BTB, RSB), TLB structure (ITLB/DTLB/STLB, huge page coverage), MESI/MOESI coherence (directory-based vs snoopy), NUMA topology (QPI/UPI, HOPS, ACPI SRAT/SLIT)." },
+  { id:"ASM",  phase:0, label:"x86-64 & ARM64 Assembly",       sub:"Intel SDM Vol 2 · ARM ARM A-profile · Agner Fog micro",
+    detail:"Intel SDM Volume 2 (full instruction set reference, all opcode encodings), ARM Architecture Reference Manual A-profile AArch64, Agner Fog's microarchitecture tables (instruction latency and throughput per CPU generation). Mandatory mastery: SysV AMD64 ABI (parameter registers rdi/rsi/rdx/rcx/r8/r9, return rax/rdx, red zone 128B), SIMD register files (XMM/YMM/ZMM, V0-V31 AArch64), memory barrier instructions (MFENCE/LFENCE/SFENCE; ISB, DMB SY, DSB ST on ARM), system instructions (SYSCALL/SYSRET, VMXON/VMLAUNCH; SVC, HVC, SMC on ARM). Read compiler output with objdump -d -M intel." },
+  { id:"DC",   phase:0, label:"Deep C — Standards & UB",       sub:"C17/C23 Standard · CERT C · N2596 · GCC internals",
+    detail:"ISO/IEC 9899:2018 (C17) and working draft N2596 (C23), CERT C Coding Standard, GCC internals. Master the UB taxonomy: strict aliasing rule (C17 6.5p7, use __attribute__((may_alias)) or memcpy for type-punning), sequence point rules, signed integer overflow (wraps under -fwrapv, undefined by default), pointer provenance (PNVI-ae-udi model), trap representations. _Atomic with explicit memory_order, designated initializers, flexible array members, every GCC/Clang extension used in kernel code (__attribute__((packed,aligned,noreturn)), __builtin_expect, __builtin_unreachable, __builtin_offsetof)." },
+
+  // Phase 1
+  { id:"OST",  phase:1, label:"OS Theory",                     sub:"OSTEP · Tanenbaum Modern OS · xv6 · Silberschatz",
+    detail:"OSTEP (Arpaci-Dusseau, freely available at ostep.org), Tanenbaum Modern Operating Systems 4e, Silberschatz Operating System Concepts 10e. Read xv6 source (MIT 6.1810, github.com/mit-pdos/xv6-riscv) line by line alongside OSTEP chapters. Process model (address space layout, context switch via struct context in xv6), virtual memory (demand paging, COW via fork(), page fault handler), file system abstractions (superblock, inode, dentry, struct file), scheduling (MLFQ, CFS intuition), IPC (pipes, signals, shared memory). xv6 is small enough to hold in your head completely — do that before touching Linux source." },
+  { id:"LKS",  phase:1, label:"Linux Kernel Source Study",     sub:"LKD (Love) · LWN.net archive · Bootlin Elixir · LKML",
+    detail:"Robert Love Linux Kernel Development 3e, LWN.net kernel articles archive (20+ years of subsystem-specific writing), Bootlin Elixir cross-referencer (elixir.bootlin.com), linux-kernel mailing list archives (lore.kernel.org). Reading order: init/main.c (start_kernel), kernel/fork.c (copy_process), kernel/sched/core.c (__schedule), mm/mmap.c (do_mmap), arch/x86/entry/entry_64.S (syscall entry path). Read Documentation/process/ completely before touching LKML. The source is the authoritative spec — man pages are abstractions over it." },
+  { id:"MMT",  phase:1, label:"Memory Management Theory",      sub:"AMD64 APM Vol 2 · Drepper WEPK · Gorman ULVMM",
+    detail:"AMD64 APM Volume 2 (paging chapter, CR3, PTE format, TLB invalidation via INVLPG/INVPCID, TLB shootdown via IPI), Drepper 'What Every Programmer Should Know About Memory' (2007), Gorman 'Understanding the Linux Virtual Memory Manager'. 4-level and 5-level page tables (PGD/P4D/PUD/PMD/PTE traversal macros), TLB shootdown (smp_call_function_many → flush_tlb_mm_range), huge pages (2MB PMD-level, 1GB PUD-level, THP via khugepaged), NUMA distance matrix (node_distance(), ACPI SLIT), MESI state machine. Read before touching mm/." },
+  { id:"CTH",  phase:1, label:"Compiler Theory",               sub:"Dragon Book · Cooper & Torczon · SSA Book · Braun 2013",
+    detail:"Aho-Lam-Sethi-Ullman Compilers: Principles, Techniques, and Tools 2e, Cooper & Torczon Engineering a Compiler 3e, Braun et al. 'Simple and Efficient Construction of SSA Form' (CC 2013). Lexing (DFA construction from NFA via subset construction), parsing (LR(1) automaton, LALR(1), recursive descent for C), IR design (three-address code, SSA form with phi-functions at dominance frontiers), dataflow analysis (liveness via backward dataflow equations, reaching definitions), register allocation (Chaitin-Briggs interference graph coloring, linear scan), instruction selection (tree pattern matching, BURS). Prerequisite for LLVM backend work." },
+  { id:"FM",   phase:1, label:"Formal Methods",                sub:"TLA+ (Lamport) · Coq/Lean4 · SPIN · CBMC · Z3",
+    detail:"Lamport 'Specifying Systems: The TLA+ Language and Tools' (2002, free PDF), Bertot & Castéran 'Interactive Theorem Proving and Program Development' (Coq), SPIN model checker user guide (Holzmann), CBMC C Bounded Model Checker (diffblue/cbmc), de Moura & Bjørner 'Z3: An Efficient SMT Solver' (TACAS 2008). TLA+: state machine specs, temporal logic operators (□φ always, ◇φ eventually, φ U ψ until), TLC model checker for exhaustive state enumeration, PlusCal front-end. Apply TLA+ to Raft's Leader Election and LogReplication modules — the Ongaro TLA+ spec is the canonical starting point (github.com/ongardie/raft.tla). CBMC: prove absence of buffer overruns and null dereferences on bounded paths. Z3 for SMT-based invariant synthesis. These tools give you the ability to prove protocol correctness, not merely test it." },
+
+  // Phase 2
+  { id:"VFS",  phase:2, label:"VFS & Filesystem Layer",        sub:"fs/ source · ext4 design · btrfs wiki · Corbet LWN",
+    detail:"Linux fs/ source. ext4 on-disk layout docs (kernel.org/doc/html/latest/filesystems/ext4/), btrfs design docs (btrfs.readthedocs.io), LWN VFS series by Neil Brown and Jonathan Corbet. Key data structures: super_block (s_op, s_fs_info, s_blocksize), inode (i_size, i_blocks, i_mapping address_space, i_op, i_fop), dentry (d_inode, d_parent, d_op, dcache LRU), file (f_pos, f_op, f_mapping), address_space_operations (readpage/readahead, writepage, bmap, direct_IO). Page cache (PG_dirty/PG_writeback flags), dirty page writeback (per-BDI flusher threads), difference between write() buffering and O_DIRECT bypass." },
+  { id:"SCH",  phase:2, label:"Process Scheduler",             sub:"EEVDF 2023 · kernel/sched/ · SCHED_DEADLINE · perf sched",
+    detail:"Lozi et al. 'EEVDF Scheduler' (2023, replacing CFS in Linux 6.6+), original CFS design notes by Ingo Molnár, kernel/sched/core.c, kernel/sched/fair.c, kernel/sched/deadline.c. EEVDF: eligible tasks (ve <= V_current), virtual deadlines (vd = ve + runtime/weight), minimum virtual deadline from augmented RB tree. CFS legacy: vruntime and red-black tree, pick_next_task_fair(). Load balancing across scheduling domains (wake_up_new_task, load_balance, struct sched_domain hierarchy SMT to NUMA). SCHED_DEADLINE with CBS (dl_runtime/dl_period enforcement via hrtimer). CPU affinity: cpuset cgroup, sched_setaffinity(2). Use perf sched record/replay/latency." },
+  { id:"MMS",  phase:2, label:"Memory Subsystem",              sub:"mm/ source · SLUB · buddy · hugetlb · NUMA balancing",
+    detail:"Linux mm/ source. Buddy allocator: alloc_pages_node(nid, gfp_flags, order), __alloc_pages_slowpath (kswapd wakeup, direct reclaim, OOM), watermarks (WMARK_MIN/LOW/HIGH per-zone). SLUB: kmem_cache_create, per-CPU slab (kmem_cache_cpu freelist + tid for lockfree cmpxchg), partial lists (kmem_cache_node). vmalloc: non-contiguous physical pages in contiguous virtual range (vmap_area RB tree). THP: madvise(MADV_HUGEPAGE), khugepaged daemon. OOM killer: select_bad_process (oom_badness score), oom_kill_process. Memory compaction: compact_zone, migration + free scanner convergence. CMA: cma_alloc for contiguous DMA buffers." },
+  { id:"DDM",  phase:2, label:"Device Driver Model",           sub:"LDD3 · drivers/ source · PCIe Base Spec 5.0 · DMA-API",
+    detail:"Corbet-Rubini-Kroah-Hartman Linux Device Drivers 3e (free PDF), PCI Express Base Specification 5.0, DMA-API documentation (Documentation/core-api/dma-api.rst). kobject/kset hierarchy (sysfs, kref reference counting), platform drivers (probe/remove lifecycle, of_match_table, devm_ managed resources), PCI driver model (pci_register_driver, BAR mapping via pci_ioremap_bar, MSI/MSI-X via pci_alloc_irq_vectors). DMA: dma_alloc_coherent (consistent, cache-coherent), dma_map_single/dma_map_sg (streaming, DMA_TO/FROM_DEVICE), SWIOTLB bounce buffers. IOMMU integration (IOVA allocator, VT-d, AMD IOMMU, vfio_group for passthrough). Threaded IRQ handlers (request_threaded_irq, IRQF_ONESHOT)." },
+  { id:"NSK",  phase:2, label:"Network Stack",                 sub:"net/core · net/ipv4 · RFC 9293 · Benvenuti ULNI",
+    detail:"Linux net/core/ and net/ipv4/ source, Benvenuti 'Understanding Linux Network Internals', RFC 9293 (TCP 2022). sk_buff: head/data/tail/end pointers, headroom for header prepend, skb_put/skb_pull/skb_push, clone vs copy. Socket buffer management: sk_sndbuf/sk_rcvbuf, tcp_rmem/wmem sysctl. NAPI polling: napi_schedule (interrupt to softirq NET_RX_SOFTIRQ), napi_gro_receive (GRO super-frame aggregation), budget exhaustion. Netfilter hooks: NF_INET_PRE_ROUTING through NF_INET_POST_ROUTING, priority-ordered hook lists. tc/qdisc: HTB for shaped traffic, FQ with pacing for TSQ, FQ-CoDel for active queue management. RPS/RFS/XPS for multi-queue NIC steering." },
+  { id:"BLK",  phase:2, label:"Block Layer & blk-mq",          sub:"block/ source · blk-mq paper 2013 · io schedulers",
+    detail:"Linux block/ source. Bjørling et al. 'Linux Block IO: Introducing Multi-queue SSD Access on Multi-core Systems' (2013). blk-mq: tag set allocation (blk_mq_alloc_tag_set, nr_hw_queues, queue_depth), hardware dispatch queues (blk_mq_hw_ctx), software staging queues (blk_mq_ctx per-CPU). Request lifecycle: blk_mq_alloc_request → blk_mq_start_request → driver → blk_mq_end_request. bio structure: bi_iter (bi_sector, bi_size, bi_idx), bi_io_vec (page + offset + len), bio_split for boundary alignment. I/O schedulers: mq-deadline (deadline expiry + FIFO batching), kyber (latency-target token bucket), BFQ (proportional-share per-cgroup). block cgroup: io.weight, io.latency QoS." },
+  { id:"SYN",  phase:2, label:"Synchronization Primitives",    sub:"McKenney perfbook · LKMM · kernel/locking/",
+    detail:"McKenney 'Is Parallel Programming Hard, And, If So, What Can You Do About It?' (perfbook, freely available), LWN RCU series, kernel/locking/ source. raw_spin_lock vs queued spinlock (MCS-based qspinlock, avoids cache-line bouncing on lock word). mutex vs semaphore vs completion. RCU: rcu_read_lock/unlock (quiescent state tracking), synchronize_rcu (blocking GP wait), call_rcu (async callback), SRCU (sleepable RCU). seqlock: seqcount_t with read_seqbegin/read_seqretry. Memory barriers: smp_mb/smp_rmb/smp_wmb, READ_ONCE/WRITE_ONCE, smp_load_acquire/smp_store_release. Linux Kernel Memory Model (LKMM) formal spec in tools/memory-model/." },
+  { id:"SIG",  phase:2, label:"Signals & IPC",                 sub:"POSIX.1-2017 · kernel/signal.c · futex(2) · Drepper",
+    detail:"POSIX.1-2017 signal semantics, kernel/signal.c. Signal delivery path: do_signal → get_signal (dequeue from pending or shared_pending) → handle_signal → setup_frame (sigreturn trampoline on user stack). SA_RESTART semantics for -ERESTARTSYS. Real-time signals (SIGRTMIN+N): queued via sigqueue(3), ordered by signal number. IPC: pipe2(fds, O_DIRECT|O_NONBLOCK) for atomic PIPE_BUF transfers; futex(2) — FUTEX_WAIT, FUTEX_WAKE, FUTEX_REQUEUE, FUTEX_CMP_REQUEUE, FUTEX_PI for priority inheritance. Drepper 'Futexes Are Tricky' (2011). eventfd(2), signalfd(2), timerfd_create(2) for fd-based event and timer handling usable with epoll." },
+  { id:"RT",   phase:2, label:"Real-Time Systems",             sub:"PREEMPT_RT · Liu & Layland 1973 · Zephyr · cyclictest",
+    detail:"PREEMPT_RT documentation (wiki.linuxfoundation.org/realtime/, partially merged into mainline Linux 6.12), Liu & Layland 'Scheduling Algorithms for Multiprogramming in a Hard-Real-Time Environment' (JACM 1973 — RMA foundations), Zephyr RTOS documentation (docs.zephyrproject.org). PREEMPT_RT: raw spinlock regions replaced by rt_mutex (PI-capable), all IRQ handlers threaded (kthread per IRQ), forced preemptibility throughout kernel. Priority inversion: rt_mutex_top_waiter() propagates effective priority up waiter chain. cyclictest(8) for worst-case interrupt latency measurement (target: under 50us on x86_64 with PREEMPT_RT, under 10us with isolcpus + nohz_full + rcu_nocbs). SCHED_DEADLINE with CBS: dl_runtime/dl_period/dl_deadline in struct sched_attr, budget enforced via hrtimer. Zephyr: k_thread_create, k_sem_give/take, k_msgq_put/get, ISR-safe API subset." },
+
+  // Phase 3
+  { id:"RUST", phase:3, label:"Rust Systems Programming",      sub:"Rustonomicon · Rust for Linux · Mara Bos Atomics & Locks",
+    detail:"The Rustonomicon (doc.rust-lang.org/nomicon), The Rust Reference, Mara Bos 'Rust Atomics and Locks' (2023, O'Reilly), Rust for Linux (rust/ kernel tree, Documentation/rust/). Focus: unsafe invariants for raw pointer dereferences (aligned, non-null, initialized, correct type, within lifetime), implementing GlobalAlloc and Allocator traits for custom allocators, FFI with C ABIs (repr(C), bindgen, cbindgen), Pin and structural vs non-structural pinning for self-referential structures, atomics with explicit Ordering (acquire/release pairs, SeqCst for full fence), #[no_std] + #[no_main] for bare-metal, proc macros for kernel binding generation (macros::module!, macros::vtable!)." },
+  { id:"CPP",  phase:3, label:"C++ Low-Level & ABI",           sub:"Itanium C++ ABI · ISO C++23 · Agner Fog manuals",
+    detail:"Itanium C++ ABI specification (itanium-cxx-abi.github.io), ISO/IEC 14882:2023, Agner Fog optimization manuals (agner.org/optimize/). vtable layout (vptr at offset 0, RTTI at vtable[-1], virtual functions at vtable[0+]), name mangling algorithm, exception handling tables (.eh_frame with CIE/FDE records, .gcc_except_table with LSDA for landing pads), zero-overhead principle (SFINAE, if constexpr, C++20 concepts), std::atomic with memory_order, placement new for arena allocators (explicit destructor call before reuse), coroutines (co_await/co_yield, promise_type protocol, compiler-synthesized frame layout)." },
+  { id:"LF",   phase:3, label:"Lock-Free DS & Memory Models",  sub:"Herlihy & Shavit AoMP · Preshing · C++ memory_order",
+    detail:"Herlihy & Shavit 'The Art of Multiprocessor Programming' 2e, Jeff Preshing's memory model blog series (preshing.com), C++23 memory model (memory_order_relaxed/acquire/release/acq_rel/seq_cst), LKMM (tools/memory-model/). Implement from scratch: Michael-Scott non-blocking FIFO queue (CAS on tail/head, sentinel node, ABA via tagged pointers or hazard pointers), Treiber lock-free stack, hazard pointer safe reclamation (HP scan-and-retire), epoch-based reclamation (EBR: global epoch, per-thread observed epoch, deferred free lists). Validate with CDSChecker (exhaustive memory model exploration) and CBMC (bounded model checking of C++ atomics)." },
+  { id:"EBP",  phase:3, label:"eBPF & XDP",                   sub:"bpf(2) · BTF/CO-RE · XDP CoNEXT 2018 · bpftool · cilium",
+    detail:"Linux bpf(2) man page, BTF documentation, cilium/ebpf Go library, Høiland-Jørgensen et al. 'The eXpress Data Path' (CoNEXT 2018), bpftool source (tools/bpf/bpftool/). Program types: XDP (driver/generic/offloaded modes, xdp_md, XDP_PASS/DROP/TX/REDIRECT), TC clsact (skb context), kprobe/kretprobe (pt_regs), fentry/fexit via bpf_trampoline, sockmap (BPF_SK_SKB_STREAM_VERDICT for socket steering). Maps: BPF_MAP_TYPE_HASH, PERCPU_HASH, LRU_HASH, ARRAY, RINGBUF (spsc lockless). BTF CO-RE: BPF_CORE_READ macro, vmlinux.h via bpftool btf dump. Verifier: bounded loops, 512B stack limit, helper function signature checking, pointer arithmetic constraints." },
+  { id:"IOU",  phase:3, label:"io_uring",                      sub:"Axboe io_uring.pdf 2019 · liburing · IORING_OP_*",
+    detail:"Jens Axboe 'Efficient IO with io_uring' (kernel.dk/io_uring.pdf, 2019), liburing source (github.com/axboe/liburing), kernel io_uring/ source. SQ/CQ ring structures shared via mmap (IORING_OFF_SQ_RING, IORING_OFF_CQ_RING, IORING_OFF_SQES). Fixed files (IORING_REGISTER_FILES) and fixed buffers (IORING_REGISTER_BUFFERS) for zero-allocation fast path. Zero-copy TX: IORING_OP_SEND_ZC with registered buffer. Multishot: IORING_ACCEPT_MULTISHOT, IORING_RECV_MULTISHOT (one SQE generates multiple CQEs). Linked SQEs: IOSQE_IO_LINK (chain on success), IOSQE_IO_HARDLINK (chain regardless). SQPOLL: IORING_SETUP_SQPOLL kernel thread polls SQ ring, no syscall needed. NVMe passthrough: IORING_OP_URING_CMD with nvme_uring_cmd for direct admin/IO command submission." },
+  { id:"NSC",  phase:3, label:"Namespaces & cgroups v2",       sub:"clone(2) · unshare(2) · cgroup v2 docs · pivot_root(2)",
+    detail:"clone(2), unshare(2), setns(2), pivot_root(2) man pages, kernel Documentation/admin-guide/cgroup-v2.rst. All 8 namespace types: mnt (CLONE_NEWNS, mount propagation: MS_SHARED/PRIVATE/SLAVE/UNBINDABLE), pid (CLONE_NEWPID, /proc synthesis, pid 1 = namespace init), net (CLONE_NEWNET, independent network stack, veth pairs), ipc (CLONE_NEWIPC, SysV IPC isolation), uts (CLONE_NEWUTS, hostname), user (CLONE_NEWUSER, uid_map/gid_map, up to 340 contiguous ranges), cgroup (CLONE_NEWCGROUP), time (CLONE_NEWTIME, CLOCK_BOOTTIME/MONOTONIC offsets). cgroup v2 controllers: cpu (cpu.max: quota/period), memory (memory.high soft limit, memory.oom.group), io (io.weight, io.latency), pids (pids.max). Build a container runtime from these syscalls alone." },
+  { id:"LLVM", phase:3, label:"LLVM & Toolchain Internals",    sub:"LLVM LangRef · TableGen · MC layer · lld · DWARF 5",
+    detail:"LLVM Language Reference Manual, TableGen documentation, LLVM MC layer architecture, lld ELF backend source, DWARF 5 specification (dwarfstd.org). LLVM new pass manager (FunctionPass, ModulePass, CGSCC via PassBuilder). TableGen: InstrInfo.td (instruction encoding, operand types, scheduling), RegisterInfo.td (register classes, allocation order, callee-saved lists). Instruction selection pipeline: SelectionDAGBuilder (LLVM IR → DAG), type legalization, DAGCombiner, GlobalISel (IRTranslator → Legalizer → RegBankSelect → InstructionSelect). Register allocation: greedy allocator (live range splitting, spill cost), PBQP for coalescing. MC emission: MCInst → MCStreamer → ELF sections. DWARF 5: DIBuilder, DW_TAG_subprogram, DW_AT_frame_base, .debug_info/.debug_abbrev/.debug_line." },
+  { id:"KVM",  phase:3, label:"Virtualization Internals",      sub:"Intel SDM Vol 3 Ch.23-33 · AMD-V VMCB · KVM · virtio spec",
+    detail:"Intel SDM Volume 3 Chapters 23-33 (VMX, VMCS fields, VM-exit reasons), AMD64 APM Volume 2 Appendix B (SVM, VMCB guest save area + control area), KVM source (virt/kvm/, arch/x86/kvm/), QEMU accel/kvm/, virtio specification v1.2. KVM userspace: /dev/kvm ioctl sequence — KVM_CREATE_VM → KVM_SET_USER_MEMORY_REGION (slot, guest_phys_addr, userspace_addr, size) → KVM_CREATE_VCPU → KVM_RUN (returns on VM exit with kvm_run reason). VMCS: guest-state area (RIP, RSP, CR0/CR3/CR4, segments, activity state), host-state area (restores on exit), execution controls (secondary: EPT enable, VPID, unrestricted guest). EPT: eptp, 4-level EPT tables with RWX bits, EPT violation VM-exits for MMIO emulation. VFIO: VFIO container → IOMMU group → vfio_device, DMA remapping via VT-d. virtio vring: descriptor table (addr/len/flags/next), available ring, used ring — guest writes avail, host writes used." },
+
+  // Phase 4
+  { id:"TCPI", phase:4, label:"TCP/IP Stack Internals",        sub:"Stevens TCP/IP Vol 1-2 · RFC 9293 · net/ipv4/tcp*.c",
+    detail:"Stevens TCP/IP Illustrated Volumes 1 and 2, RFC 9293 (TCP 2022), Linux net/ipv4/tcp.c, tcp_input.c, tcp_output.c, tcp_timer.c. Handshake kernel path: tcp_connect (SYN, SYN_SENT), tcp_rcv_state_process (SYN-ACK → ESTABLISHED). Congestion control framework (tcp_congestion_ops hooks), CUBIC (cubic function of time since last congestion), BBRv2 (model-based pacing: BtlBw via delivery rate, RTprop via min-RTT filter). Receive buffer autotuning: tcp_rcv_space_adjust. TCP Fast Open: AES-based cookie, TFO_SERVER_ENABLE, data in SYN. TIME_WAIT recycling (tcp_tw_reuse, RFC 1323 timestamps required). SO_REUSEPORT + BPF_PROG_TYPE_SK_REUSEPORT. GRO aggregation, GSO (skb_shinfo gso_size, gso_type GSO_TCPV4, NIC or software segmentation)." },
+  { id:"DPD",  phase:4, label:"DPDK & Poll-Mode Drivers",      sub:"DPDK Programmer's Guide · rte_mbuf · rte_ring · vfio-pci",
+    detail:"DPDK Programmer's Guide (docs.dpdk.org), rte_mbuf structure (cache-line-aligned: pool pointer, next, data_off, refcnt, nb_segs, port, ol_flags; second 64B: packet_type, pkt_len, data_len, rss hash), rte_ring lock-free circular FIFO (MPMC via CAS on prod.head/cons.head, SPSC variant), rte_eth_dev PMD interface (rx_burst/tx_burst function pointers). Huge pages: 2MB via /sys/kernel/mm/hugepages/, 1GB via kernel cmdline. IOMMU passthrough: vfio-pci driver, VFIO container + IOMMU group, DMA remapping into huge page memory. Zero-copy RX: external mbuf (rte_pktmbuf_attach). RSS: rte_eth_conf.rx_adv_conf.rss_conf (rss_key, rss_hf bitmask). rte_flow API for hardware packet steering. Telemetry: rte_telemetry_register_cmd." },
+  { id:"BGP",  phase:4, label:"BGP & SDN Architecture",        sub:"RFC 4271 · RFC 7938 · FRRouting source · BIRD2",
+    detail:"RFC 4271 (BGP-4), RFC 7938 (BGP in large-scale data centers, eBGP unnumbered with IPv6 link-local next-hops), RFC 4760 (Multiprotocol BGP, AFI/SAFI), RFC 7911 (ADD-PATH for ECMP and backup paths), FRRouting bgpd source, BIRD2 source. BGP FSM: Idle → Connect → Active → OpenSent → OpenConfirm → Established. UPDATE message: withdrawn routes, path attributes (AS_PATH type-2, NEXT_HOP type-3, MED type-4, LOCAL_PREF type-5, COMMUNITY type-8: NO_EXPORT 0xFFFFFF01, BLACKHOLE 0xFFFF029A), NLRI prefix list. ECMP: maximum-paths ibgp/ebgp, hash-based next-hop selection. BFD (RFC 5880): 1ms tx-interval for sub-second failure detection. Large communities RFC 8092: (ASN:function:parameter) for 96-bit policy signaling." },
+  { id:"VXL",  phase:4, label:"VXLAN & Overlay Networks",      sub:"RFC 7348 · RFC 8365 EVPN · Geneve RFC 8926 · tc-flower",
+    detail:"RFC 7348 (VXLAN), RFC 8365 (EVPN for VXLAN), RFC 8926 (Geneve), Linux drivers/net/vxlan.c source. VNI (24-bit VXLAN Network Identifier): UDP port 4789, outer Ethernet + IP + UDP + 8B VXLAN header (I-flag set, 24-bit VNI) + inner L2 frame. FDB population: BGP EVPN type-2 routes (MAC + IP binding), type-3 routes (IMET for BUM flooding tree). ARP suppression: EVPN type-2 IP binding allows local VTEP ARP reply, eliminates BUM flood. Hardware VTEP offload: tc-flower rules (match outer headers, encap/decap actions). Geneve: variable-length option TLVs for metadata (NSH, OVN tunnel keys). BUM handling: ingress replication (unicast per remote VTEP), multicast group (PIM-SM underlay), head-end replication." },
+  { id:"QUIC", phase:4, label:"QUIC Protocol Internals",       sub:"RFC 9000 · RFC 9001 · RFC 9002 · quiche · ngtcp2",
+    detail:"RFC 9000 (QUIC transport), RFC 9001 (TLS 1.3 with QUIC, per-encryption-level AEAD), RFC 9002 (QUIC loss detection and congestion control, ECN), RFC 9221 (Unreliable Datagrams), Cloudflare quiche (Rust), ngtcp2 (C). CID management (variable-length 0-20 bytes, rotation via RETIRE_CONNECTION_ID + NEW_CONNECTION_ID). Three packet number spaces: Initial (HKDF keys from client random), Handshake, 1-RTT (independent PN counters). QUIC-TLS: per-PN-space AEAD (AES-128-GCM default), header protection (AES-ECB or ChaCha20 sample → mask on first byte + PN field). Stream multiplexing: STREAM frame (stream_id, offset, data), MAX_STREAM_DATA per-stream flow control. 0-RTT: session ticket → early data keys (replay risk, anti-replay token). UDP GSO: sendmmsg with CMSG UDP_SEGMENT for datagram batching." },
+  { id:"RDMA", phase:4, label:"RDMA & InfiniBand",             sub:"IB Arch Spec Vol 1 · libibverbs · RoCEv2 · MLNX_OFED",
+    detail:"InfiniBand Architecture Specification Volume 1 (infinibandta.org), rdma-core libibverbs API (github.com/linux-rdma/rdma-core), RDMA CM API (rdma_cm.h), RoCEv2 specification (RDMA over Converged Ethernet v2, UDP/IP + GRH encapsulation), NVIDIA/Mellanox MLNX_OFED documentation. QP types: RC (Reliable Connected — ACK-based, in-order, one-to-one), UC (Unreliable Connected), UD (Unreliable Datagram, multicast, MTU-limited), XRC (Extended RC — shared receive queue for MPI all-to-all scalability). Verbs: ibv_reg_mr (DMA-pin memory, lkey for local ops, rkey for remote ops), ibv_post_send: IBV_WR_SEND (two-sided, remote posts RECV), IBV_WR_RDMA_WRITE (one-sided, zero-copy to remote VA, remote CPU oblivious), IBV_WR_RDMA_READ (pull from remote), IBV_WR_ATOMIC_FETCH_AND_ADD, IBV_WR_ATOMIC_CMP_AND_SWP. ibv_poll_cq for completions. Latency: HCA-to-HCA ~600ns-1us vs TCP/IP kernel stack ~50-100us. MR caching is the primary performance pitfall." },
+
+  // Phase 5
+  { id:"FSI",  phase:5, label:"Filesystem Implementation",     sub:"ext4 source · btrfs design · F2FS FAST 2015 · WrapFS",
+    detail:"Linux fs/ext4/ source, btrfs design docs and fs/btrfs/ source, Lee et al. 'F2FS: A New File System for Flash Storage' (FAST 2015), WrapFS stackable filesystem. Start with a FUSE filesystem (libfuse 3.x, fuse_lowlevel_ops: lookup, getattr, read, write). ext4 journaling: jbd2 (journal_start/journal_stop, journal_get_write_access + journal_dirty_metadata), data=ordered (data before metadata commit) vs data=journal. btrfs COW B-trees: generation counter per node, copy-on-write on modification, tree of tree roots, extent tree, checksum tree (CRC32c per block). Delayed allocation: ext4_da_write_begin defers block allocation to writeback. fallocate: FALLOC_FL_PUNCH_HOLE (deallocate range, return zeros), FALLOC_FL_COLLAPSE_RANGE. Reflinks: ioctl(FICLONE) for COW sharing on btrfs/XFS. fsync durability: REQ_FUA + REQ_PREFLUSH barriers." },
+  { id:"LSMT", phase:5, label:"LSM-Trees & B-Trees",           sub:"LevelDB impl notes · RocksDB wiki · Monkey SIGMOD 2017",
+    detail:"LevelDB implementation notes (github.com/google/leveldb/doc/impl.md), RocksDB wiki (compaction strategies: leveled, FIFO, universal; column families; memtable: SkipList, HashLinkList), WiredTiger docs, Dayan et al. 'Monkey: Optimal Navigable Key-Value Store' (SIGMOD 2017, adaptive Bloom filter memory allocation across levels). Implement both from scratch: (1) B+-tree with MVCC — leaf pages with key/value/txid tuples, version chains, page splits/merges with SMO under latch coupling, WAL for recovery. (2) LSM-tree with leveled compaction — MemTable (RB-tree or skiplist), WAL, L0 SSTable flush, L1+ sorted runs with Bloom filters per block, block cache (LRU or TinyLFU). Understand write/space/read amplification triangle: leveled minimizes space, tiered minimizes write amplification." },
+  { id:"NVME", phase:5, label:"NVMe & O_DIRECT",               sub:"NVMe Base Spec 2.0 · SPDK · libaio · io_uring NVMe cmd",
+    detail:"NVMe Base Specification 2.0 (nvmexpress.org), NVMe-oF Transport Specification, SPDK Programmer's Guide (spdk.io/doc/), libaio API. NVMe Admin Commands: Identify Controller (CNS=0x01, MDTS, SQES/CQES), Identify Namespace (CNS=0x00, LBADS, NSZE), Format NVM. I/O Commands: Read (SLBA, NLB, PRINFO), Write (FUA for power-loss protection), Dataset Management (DEALLOCATE for TRIM). SQ/CQ semantics: host writes SQE + tail doorbell; controller processes, writes CQE + toggles phase bit; host reads CQE, writes head doorbell. O_DIRECT alignment: logical block size (512B or 4096B) for buffer address, file offset, and transfer length — verify with ioctl(BLKSSZGET). io_uring NVMe passthrough: IORING_OP_URING_CMD with nvme_uring_cmd for raw NVMe commands from userspace." },
+  { id:"DBE",  phase:5, label:"Database Storage Engines",      sub:"CMU 15-445 · ARIES TODS 1992 · MVCC · PostgreSQL storage",
+    detail:"CMU 15-445/645 (Andy Pavlo, all lectures free at 15445.courses.cs.cmu.edu), Mohan et al. 'ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks' (TODS 1992), PostgreSQL storage manager source (src/backend/storage/). B+-tree page layout: page header (lsn, checksum, lower/upper free space pointers), slot array (ItemId: offset + length), tuples stored from end. Buffer pool: clock-sweep eviction (usage_count decrement), dirty page bitmap, pin count. WAL: XLogRecord structure (tot_len, xid, prev_lsn, rmid, xl_info), LSN tracks flushed position, checkpoint (redo pointer, dirty page snapshot). MVCC in PostgreSQL: tuple xmin + xmax + cmin/cmax, visibility rule (xmin committed before snapshot, xmax invalid or after). Vacuum: heap_page_prune, index_bulk_delete, FSM update." },
+
+  // Phase 6
+  { id:"GPUA", phase:6, label:"GPU Architecture & CUDA",       sub:"CUDA C++ Guide · PTX ISA · Volta/Hopper whitepapers",
+    detail:"CUDA C++ Programming Guide, PTX ISA reference, NVIDIA Volta (GV100) and Hopper (GH100) architecture whitepapers, SASS via cuobjdump --dump-sass. SM internal: warp schedulers (4 per SM on Volta), dispatch units (2 per scheduler), register file (65536 x 32-bit registers per SM, partitioned across warps), shared memory (96KB L1/shared configurable on Volta, 232KB on Hopper). Warp scheduling: GTO (Greedy-Then-Oldest), LRR, Two-Level. Shared memory bank conflicts: 32 banks x 4-byte interleaving (Volta+), conflict-free when threads access different banks or same address (broadcast). Register spilling: local memory in L2/DRAM when exceeding 255 registers per thread x warp occupancy. HBM3 bandwidth: 2TB/s on H100 SXM5. NVLink 4.0: 900 GB/s bidirectional. Tensor Cores: wmma::fragment for 16x16x16 WMMA tiles, wgmma on Hopper, TF32/BF16/FP16/INT8/FP8 precision modes." },
+  { id:"SIMD", phase:6, label:"SIMD & Vectorization",          sub:"Intel Intrinsics Guide · ISPC · AVX-512 · ARM SVE",
+    detail:"Intel Intrinsics Guide (intrinsics.guide), ISPC (Intel SPMD Program Compiler) User Guide, AVX-512 programming reference (F/CD/BW/DQ/IFMA/VBMI/VBMI2/VNNI/BITALG extensions), ARM SVE Programmer's Guide (predicate-centric design, vector-length-agnostic). Auto-vectorization analysis: clang -Rpass=vectorize -Rpass-missed=vectorize, GCC -fopt-info-vec-missed. Gather/scatter: _mm512_i64gather_epi64, _mm512_i32scatter_epi64. Opmask registers k0-k7 for per-element conditional execution (mask_add_epi32, zero-masking vs merge-masking). VPCONFLICTD: detects same-index write conflicts within a vector for vectorized scatter-with-accumulation. SLP vectorization in LLVM: SLPVectorizer packs independent scalar ops into vector instructions. VNNI: _mm512_dpbusd_epi32 for uint8 x int8 dot product + int32 accumulate (8 MACs per cycle per lane). ARM SVE: whilelt/whilelo loop predicate generation, ld1/st1 with predicate for safe tail loop." },
+  { id:"NUMA", phase:6, label:"NUMA & Memory Topology",        sub:"numactl · hwloc · libnuma · ACPI SRAT/SLIT",
+    detail:"numactl(8) man page, hwloc documentation (Portable Hardware Locality, open-mpi.org/projects/hwloc/), libnuma API (numa_alloc_onnode, numa_run_on_node, numa_distance), ACPI SRAT (maps CPUs and memory to proximity domains) and SLIT (NxN distance matrix, local = 10). NUMA distance: local (10), 1-hop remote (20-21), 2-hop (32+) depending on UPI/Infinity Fabric topology. Affinity: mbind(MPOL_BIND, nodemask) for strict binding, MPOL_INTERLEAVE for round-robin, MPOL_PREFERRED for soft. NUMA balancing: PROT_NONE scan, hint fault → numa_migrate_prep → move_pages. First-touch policy: each thread must initialize its own data for correct NUMA placement. numastat for node-local vs remote counters. hwloc lstopo for topology visualization." },
+  { id:"HPCP", phase:6, label:"HPC Patterns & Collectives",    sub:"MPI 4.0 · NCCL · Bruck 1997 · OpenSHMEM 1.5",
+    detail:"MPI 4.0 standard (mpi-forum.org), OpenSHMEM 1.5 specification, NCCL documentation and source (github.com/NVIDIA/nccl), Bruck et al. 'Efficient algorithms for all-to-all communications in multiport message-passing systems' (1997). Allreduce algorithms: recursive halving/doubling (O(log P) rounds, bandwidth-optimal for large messages), ring allreduce (Baidu 2017 deep learning: scatter-reduce P-1 steps + allgather P-1 steps, bandwidth = 2(P-1)M/P), binomial tree broadcast (O(log P) latency, doubles active senders each step). One-sided communication: MPI_Put/MPI_Get/MPI_Accumulate with passive target epochs (MPI_Win_lock/unlock). NCCL topology-aware selection: ring over NVLink (intra-node), tree over IB/RoCE (inter-node), LL protocol for small messages. OpenSHMEM: symmetric heap (shmem_malloc), shmem_put64/get64, shmem_barrier_all." },
+  { id:"ROOF", phase:6, label:"Roofline Model & Perf Analysis", sub:"Williams CACM 2009 · ERT · VTune · perf stat · likwid",
+    detail:"Williams-Waterman-Patterson 'Roofline: An Insightful Visual Performance Model for Multicore Architectures' (CACM 2009), Empirical Roofline Tool (ERT, crd.lbl.gov), Intel VTune Profiler (microarchitecture exploration, memory access analysis), perf stat (L1-dcache-load-misses, LLC-load-misses, branch-misses, PERF_TYPE_RAW for vendor events), PAPI (Portable API for Performance Counters), likwid (likwid-perfctr group-based counter measurement, likwid-bench for bandwidth). Roofline: arithmetic intensity I = FLOPs / bytes-of-DRAM-traffic, kernel performance limited by min(peak_GFLOPS, I x peak_bandwidth). STREAM benchmark for sustained bandwidth (Copy/Scale/Add/Triad). Cache-miss attribution: perf record + perf annotate. Branch misprediction: perf stat branch-misses. TMAM (Top-down Microarchitecture Analysis Method): frontend-bound / backend-bound / retiring / bad-speculation breakdown." },
+  { id:"CXL",  phase:6, label:"Compute Express Link (CXL)",    sub:"CXL Spec 3.0 · drivers/cxl/ · TPP ASPLOS 2023",
+    detail:"CXL Specification 3.0 (computeexpresslink.org), Linux drivers/cxl/ source (cxl_pci.ko, cxl_mem.ko, cxl_core.ko), Maruf et al. 'TPP: Transparent Page Placement for CXL-Enabled Systems' (ASPLOS 2023), Gouk et al. 'DirectCXL' (USENIX ATC 2022). CXL sub-protocols multiplexed over PCIe 6.0: CXL.io (PCIe-compatible config + MMIO), CXL.cache (device-to-host cache coherence: D2H_Req RdOwn/RdShared, H2D_Snoop SnpInv/SnpCur), CXL.mem (host-initiated load/store into device memory via Full/Empty granularity bits). Device types: Type 1 (accelerator + CXL.cache only), Type 2 (accelerator + CXL.mem, both protocols), Type 3 (pure memory expander, CXL.mem only). CXL 3.0: device-to-device P2P via shared pool, multi-host memory sharing, 256GT/s via PCIe 6.0. Linux: struct cxl_endpoint_decoder for HDM range decode, DAX device (struct dax_region), ext4 -o dax for page-cache bypass. Performance: type-3 latency ~200-300ns vs DDR5 ~80ns, optimal for memory-capacity-bound workloads." },
+  { id:"HETC", phase:6, label:"Heterogeneous Computing",       sub:"OpenCL 3.0 · ROCm/HIP · SYCL 2020 · Intel oneAPI DPC++",
+    detail:"OpenCL 3.0 specification (Khronos Group), ROCm/HIP documentation (rocm.docs.amd.com), AMD HIP API (nearly source-compatible with CUDA, hipcc wraps clang), SYCL 2020 specification (single-source C++17), Intel oneAPI DPC++ (SYCL targeting CPU/GPU/FPGA via SPIR-V). OpenCL platform model: Platform → Device → Context → Command Queue → Kernel. Memory model: global (all work-items, GPU DRAM), local (work-group shared, maps to LDS/shared memory), private (per-work-item registers), constant (broadcast-friendly read-only cache). AMD CDNA architecture: CU with 64-lane SIMD (wavefront = 64 work-items), 4 SIMDs per CU, LDS 64KB per CU on CDNA2, HBM2e 1.6TB/s on MI250X. ROCm APIs: hipMalloc, hipHostMalloc (pinned), hipMallocManaged (Unified Memory), hipMemcpy. SYCL: kernels as C++ lambdas captured by sycl::queue::submit, Unified Shared Memory (sycl::malloc_shared for pointer-based cross-device access), hierarchical parallelism via nd_range + local_accessor. Portability vs native performance: HIP for AMD-native, SYCL for cross-vendor portability." },
+
+  // Phase 7
+  { id:"RAFT", phase:7, label:"Raft & Paxos Implementation",   sub:"Ongaro thesis 2014 · Lamport Paxos · etcd raft source",
+    detail:"Diego Ongaro's Raft dissertation (2014, web.stanford.edu/~ouster/), Lamport 'Paxos Made Simple' (2001), Van Renesse & Altinbuken 'Paxos Made Moderately Complex' (2015), etcd raft package source (github.com/etcd-io/raft). Implement completely from scratch: leader election (randomized timeouts 150-300ms, RequestVote RPC — candidate increments term, vote granted only if log at least as up-to-date), log replication (AppendEntries — leader sends from nextIndex[peer], commit index advances on majority store, applied to state machine), log compaction (InstallSnapshot RPC, chunked transfer, log truncation up to snapshot index), cluster membership changes (joint consensus C_old,new, or single-server changes one node at a time). Verify linearizability with Jepsen + Elle checker. TLA+ spec from Ongaro. Do not use a library." },
+  { id:"DIST", phase:7, label:"Distributed Storage",           sub:"Dynamo SOSP 2007 · GFS SOSP 2003 · CRUSH SC 2006 · Tao ATC",
+    detail:"DeCandia et al. 'Dynamo: Amazon's Highly Available Key-Value Store' (SOSP 2007), Ghemawat et al. 'The Google File System' (SOSP 2003), Weil et al. 'CRUSH: Controlled, Scalable, Decentralized Placement' (SC 2006), Beaver et al. 'Finding a Needle in Haystack' (OSDI 2010), Bronson et al. 'TAO: Facebook's Distributed Data Store for the Social Graph' (ATC 2013). Consistent hashing: Karger virtual node token ring, sloppy quorum (N=3, R=1, W=2 for Dynamo availability), hinted handoff. Erasure coding: Reed-Solomon (k data + m parity, Intel ISA-L for GF(2^8)), LRC (Locally Reconstructable Codes, Azure Blob). CRUSH map: hierarchical failure domain tree (rack → host → disk), deterministic pseudo-random placement (no central directory). GFS: 64MB chunks, master for namespace + chunk location, primary replica for mutation order, lease mechanism." },
+  { id:"CRDT", phase:7, label:"CRDTs & Vector Clocks",         sub:"Shapiro INRIA 2011 · Meiklejohn · Logoot · Automerge",
+    detail:"Shapiro et al. 'A Comprehensive Study of Convergent and Commutative Replicated Data Types' (INRIA RR-7506, 2011), Meiklejohn et al. 'A Conflict-Free Replicated JSON Datatype' (2017), Weiss et al. 'Logoot' (ICDCS 2009), Automerge source (github.com/automerge/automerge-rs). CvRDT (state-based): join semilattice merge (LUB, idempotent + commutative + associative). CmRDT (op-based): causal broadcast delivery required. Implement: G-Counter (per-replica increment, merge = per-element max), PN-Counter (pair of G-Counters), LWW-Register (timestamp-tagged, tie-break by replica ID), OR-Set (unique tag per add, remove all seen tags, merge = union, present iff tag set non-empty), RGA (Replicated Growable Array for collaborative text: (session_id, seq_no) identifier, total order for conflict resolution, tombstone deletion). Vector clocks: happens-before relation, causal consistency enforcement." },
+  { id:"GOSP", phase:7, label:"Gossip Protocols",              sub:"SWIM DSN 2002 · Lifeguard 2018 · Serf · Phi-accrual 2004",
+    detail:"Das et al. 'SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol' (DSN 2002), Suresh et al. 'Lifeguard: Local Health Awareness for More Accurate Failure Detection' (2018), Serf source (github.com/hashicorp/serf), Hayashibara et al. 'The Phi-Accrual Failure Detector' (2004). SWIM components: (1) Failure detection — direct probe + indirect probe via k random members if no ack within T_ping, mark Dead if no indirect ack. (2) Dissemination — infection-style piggybacking of Alive/Suspect/Dead events on probe/ack messages for O(log N) rounds. (3) Membership — join (contact seed, seed disseminates list), leave (gossip Left event), Alive/Suspect/Dead state machine per member. Lifeguard: local health multiplier (LHM) adjusts probe timeout based on self-detected health, prevents cascade failures. Convergence: O(log N) rounds for full dissemination with high probability." },
+  { id:"DNET", phase:7, label:"Distributed Networking",        sub:"gRPC internals · Karger 1997 · Maglev NSDI 2016 · Chord",
+    detail:"gRPC core C library source (github.com/grpc/grpc), Karger et al. 'Consistent Hashing and Random Trees' (STOC 1997), Stoica et al. 'Chord: A Scalable Peer-to-Peer Lookup Service' (SIGCOMM 2001), Eisenbud et al. 'Maglev: A Fast and Reliable Software Network Load Balancer' (NSDI 2016). gRPC: HTTP/2 stream multiplexing (SETTINGS_MAX_CONCURRENT_STREAMS, HPACK-compressed headers), deadline propagation (grpc-timeout header, context cancellation on expiry), retry policy (service config JSON: max_attempts, retryable_status_codes), name resolution (DNS + xDS for service mesh). Maglev consistent hash: each backend generates M-length permutation (two hash functions mod M, M prime ~65537), fills table in round-robin permutation order, O(M log M) construction, O(1) lookup, minimal disruption on backend change. Chord: O(log N) finger table routing, O(log^2 N) expected hops during churn, successor list for fault tolerance." },
+
+  // Phase 8
+  { id:"LSMS", phase:8, label:"LSM Internals & BPF-LSM",      sub:"SELinux · AppArmor · Landlock · BPF-LSM · security/",
+    detail:"Linux security/ source, Loscocco & Smalley 'Integrating Flexible Support for Security Policies into the Linux OS' (NSA/NAI Labs), AppArmor documentation, Landlock LSM design doc (Documentation/userspace-api/landlock.rst), BPF-LSM hook list (kernel/bpf/bpf_lsm.c). LSM hook registration: security_hook_list linked into security_hook_heads at module init, called via call_int_hook / call_void_hook. inode_permission hook path: do_inode_permission → security_inode_permission → selinux_inode_permission (AVC cache lookup → AVC miss → type enforcement check). seccomp-bpf: SECCOMP_SET_MODE_FILTER with struct sock_fprog (cbpf only), actions: SECCOMP_RET_KILL_PROCESS, SECCOMP_RET_TRAP (SIGSYS), SECCOMP_RET_ERRNO, SECCOMP_RET_ALLOW. Credential management: struct cred lifecycle — prepare_creds, commit_creds (RCU-assign), override_creds/revert_creds for temporary privilege. BPF-LSM: BPF_PROG_TYPE_LSM attaches to LSM hooks, returning 0 for allow or -errno for deny." },
+  { id:"CRYP", phase:8, label:"Cryptography Primitives",       sub:"HAC textbook · NaCl/libsodium · FIPS 140-3 · AES-NI",
+    detail:"Menezes-Oorschot-Vanstone 'Handbook of Applied Cryptography' (free PDF, cacr.uwaterloo.ca/hac/), Bernstein's NaCl documentation and libsodium source, FIPS 140-3, Intel AES-NI programming reference. Implement from scratch in constant time: AES-128/256 (Rijndael S-box via GF(2^8) multiplicative inverse + affine transform, ShiftRows, MixColumns, key schedule) with AES-NI (AESENC/AESENCLAST pipelined 4-way interleaved for 6-cycle latency hiding). ChaCha20-Poly1305 (RFC 8439): quarter-round function, 20-round block, poly1305 accumulator mod 2^130-5. X25519: Montgomery curve over p=2^255-19, Montgomery ladder for constant-time scalar multiply. Ed25519: twisted Edwards curve, double-and-add. Study Flush+Reload cache-timing attacks (Yarom & Falkner 2014) and constant-time discipline (no secret-dependent branches, data-independent memory access patterns)." },
+  { id:"MITG", phase:8, label:"Exploit Mitigations",           sub:"KASLR · SMEP/SMAP · CET · PAC · KPTI · Spectre patches",
+    detail:"Linux Documentation/x86/kernel-stacks.rst, Intel CET specification (doc 334525), ARM Pointer Authentication spec (ARMv8.3-A), KPTI patchset analysis (LWN.net January 2018), Google Project Zero Spectre/Meltdown writeup (2018). KASLR: RDRAND for base address randomization, physical memory map randomization, module base randomization. SMEP: CR4.SMEP — raises #PF if kernel executes user page (U/S bit set). SMAP: CR4.SMAP — raises #PF if kernel reads/writes user page without STAC/CLAC bracket. Intel CET Shadow Stack: WRSS (write-once push to shadow stack), INCSSP (adjust SS pointer), RSTORSSP/SAVEPREVSSP for context switch. ARM PAC: PACIASP signs LR with IA key + SP context (QARMA cipher), AUTIASP verifies on return, forgery requires EL1-restricted key. Retpoline: CALL-SET_UP_TARGET/CAPTURE_SPEC captures speculative execution in ret loop with LFENCE serialization. IBRS/IBPB/STIBP microcode controls for Spectre variant 2." },
+  { id:"OBS",  phase:8, label:"Observability & Tracing",       sub:"ftrace · perf · bpftrace · DWARF 5 · FlameGraph · Gregg",
+    detail:"Kernel Documentation/trace/ftrace.rst, perf(1) man page and kernel perf_event subsystem source, bpftrace reference guide (github.com/bpftrace/bpftrace/blob/master/docs/reference_guide.md), DWARF 5 specification (dwarfstd.org), Brendan Gregg 'Systems Performance' 2e and FlameGraph repository. ftrace: echo function_graph > /sys/kernel/tracing/current_tracer, set_ftrace_filter for selective tracing, trace-cmd record/report. kprobe/uprobe event tracing: perf probe --add 'tcp_sendmsg bytes'. perf_event_open(2): PERF_TYPE_HARDWARE (PERF_COUNT_HW_CACHE_MISSES), PERF_TYPE_RAW (vendor PMU event codes), PERF_TYPE_TRACEPOINT (via sysfs ID). Off-CPU flame graphs: bpftrace sampling sched:sched_switch with ustack/kstack. Memory allocation tracing: bpftrace -e 'kprobe:__kmalloc { @allocs[kstack] = sum(arg0); }'. DWARF 5: DW_OP_entry_value for optimized-out parameter recovery, DW_TAG_variable with DW_AT_location expressions." },
+
+  // Phase 9
+  { id:"KCON", phase:9, label:"Upstream Kernel Contribution",  sub:"LKML · Submitting Patches doc · checkpatch.pl · b4 · sparse",
+    detail:"Documentation/process/submitting-patches.rst, Documentation/process/coding-style.rst, Documentation/process/email-clients.rst, checkpatch.pl (scripts/checkpatch.pl --strict), b4 tool (b4 am, b4 prep, b4 send). Workflow: (1) Identify a real bug (syzbot at syzkaller.appspot.com) or missing feature. (2) Write focused patch with correct commit message (imperative mood under 72 chars, blank line, why-not-how body, Fixes: sha (title) tag). (3) Run checkpatch.pl --strict, sparse (make C=2), smatch, Coccinelle. (4) Test under KVM with lockdep (CONFIG_LOCKDEP=y), KASAN, KCSAN. (5) Send to get_maintainer.pl output + LKML. (6) Iterate on review, repost as v2/v3 with changelog after 'Changes in vN:'. Target: at least one accepted patch in net/, mm/, or bpf/ trees before calling this phase complete." },
+  { id:"DSYS", phase:9, label:"Design & Build a Novel System",  sub:"Type-1 hypervisor · container runtime · XDP NF · LLVM ISA",
+    detail:"The capstone build. Choose one and complete it to production quality: (1) Minimal Type-1 hypervisor in bare-metal Rust using Intel VT-x — VMXON setup (IA32_FEATURE_CONTROL MSR, VMXON region at aligned physical page), VMCS population (host/guest state, execution controls, EPT enable), VMLAUNCH, VM exit handler dispatch (exit_reason: EPT violation for MMIO, CPUID masking, HLT, MSR interception), EPT 4-level tables (PML4/PDPT/PD/PT, UC memory type for MMIO ranges). (2) OCI-compliant container runtime from clone(2)/unshare(2)/pivot_root(2)/cgroup v2 file APIs/seccomp-bpf — parse config.json, setup rootfs, exec init process, no runc or libcontainer. (3) Stateful XDP network function (NAT, L4 LB, or stateful firewall): LRU_HASH for connection tracking, XDP_TX for forwarding, AF_XDP zero-copy fast path. (4) Complete LLVM backend for custom ISA: TableGen descriptions, SelectionDAG lowering, instruction emission. Write design specification first. Benchmark against state of the art. Publish publicly." },
+  { id:"PERF", phase:9, label:"Performance Engineering",        sub:"Cache-line · NUMA-aware · zero-copy · false-sharing · TMAM",
+    detail:"Systematic discipline: measure before optimizing (perf stat baseline: cycles, instructions, IPC, cache-misses, branch-misses), identify bound via TMAM (perf stat --topdown: frontend-bound/backend-bound/retiring/bad-speculation), apply targeted optimizations one at a time with measurement between each. False sharing: pad to __cacheline_aligned (64B), verify with perf c2c (HITM events — Hit In Modified state) or LIKWID cache coherency group. NUMA-local allocation: mmap + mbind(MPOL_BIND, nodemask) for per-NUMA-node arenas. Zero-copy I/O: splice(2) for file-to-socket (avoids two user-kernel crossings), sendfile(2), io_uring IORING_OP_SEND_ZC. Branch hints: __builtin_expect(x, 0) for unlikely paths (moves to cold section). Software prefetch: __builtin_prefetch(addr, 0, 3) L1 temporal, prefetchnta for streaming (avoids cache pollution). Huge pages: posix_memalign to 2MB boundary + madvise(MADV_HUGEPAGE), or mmap with MAP_HUGETLB|MAP_HUGE_2MB." },
+  { id:"PAPR", phase:9, label:"Research Paper Implementation",  sub:"SOSP · OSDI · EuroSys · USENIX ATC · ASPLOS · NSDI · CCS",
+    detail:"The final validation: take a published paper from a top-tier systems venue, implement it faithfully, benchmark against the paper's reported numbers, and write a detailed analysis of divergences. Suitable targets: NOVA 'A Log-structured File System for Hybrid Volatile/Non-volatile Main Memories' (FAST 2016), Shenango 'Achieving Microsecond-scale Tail Latency' (NSDI 2019), LegoOS 'A Disseminated, Distributed OS for Hardware Resource Disaggregation' (OSDI 2018), Caladan 'Overcoming Interference and Load Imbalance' (EuroSys 2020), or any NSDI/SIGCOMM/CCS paper on programmable networking or side-channel attacks. Write technical analysis: where your implementation matches the paper, where it diverges (hardware generation, implementation choices, underspecified details). Publish implementation, benchmarks, and analysis on GitHub with full write-up. This is the boundary between practitioner and researcher." },
+
+  // Phase 10: Hardware Engineering
+  { id:"RTL",  phase:10, label:"RTL Design & Verification",    sub:"SystemVerilog 1800-2017 · UVM · Weste & Harris · OpenROAD",
+    detail:"Sutherland-Davidmann-Flake 'SystemVerilog for Design' 2e, Spear & Tumbush 'SystemVerilog for Verification' 3e, Weste & Harris 'CMOS VLSI Design' 4e, OpenROAD project (github.com/The-OpenROAD-Project, open-source RTL-to-GDS). Synchronous design discipline: all state in flip-flops, combinational logic between register stages, setup time (data stable before tsu before clock edge), hold time (data stable thd after edge), slack = required_arrival - actual_arrival. Clock Domain Crossing: Gray-code encoded read/write pointers for async FIFOs (one bit changes per increment, safe for 2-FF synchronizer). UVM (IEEE 1800.2-2020): uvm_driver (drives DUT inputs from sequence items), uvm_monitor (observes outputs), uvm_scoreboard (expected vs actual), uvm_sequencer (arbitrates sequences). Constrained random: rand/randc, solve-before constraints, randcase/randseq. SVA concurrent assertions: @(posedge clk) property p; (request |-> ##[1:4] acknowledge). Formal: SymbiYosys (open-source, github.com/YosysHQ/sby) for unbounded property checking, JasperGold for commercial. Static timing: setup slack minimization via retiming (move registers across combinational to balance path depths). Physical flow: Yosys synthesis → OpenROAD place-and-route → DRC/LVS sign-off." },
+  { id:"FPGA", phase:10, label:"FPGA Design & HLS",            sub:"Verilog 2005 · Kastner pp4fpgas · Vitis HLS UG1399 · bitstream",
+    detail:"IEEE 1364-2005 (Verilog-2005), IEEE 1800-2017 (SystemVerilog), Kastner et al. 'Parallel Programming for FPGAs' (github.com/KastnerRG/pp4fpgas, free and comprehensive), Xilinx Vitis HLS User Guide UG1399, Intel Quartus Prime Pro Handbook, Xilinx UG901 Vivado Design Suite Synthesis Guide. FPGA primitives: CLB (LUT6 as arbitrary 64-bit truth table, carry chain CARRY8 for fast adders), DSP48E2 (27x18 bit multiplier + 48-bit accumulator + pre-adder, cascadable for FIR filters), BRAM (true dual-port 36Kb blocks, configurable as 32Kx1 through 512x72), SERDES (GTY on UltraScale+, up to 58 Gbps per lane, 8b/10b or 64b/66b encoding, PCIe hard IP). HLS with Vitis HLS: C/C++ + pragmas — HLS PIPELINE II=1 (accept new input every cycle), HLS UNROLL factor=4 (replicate loop body 4x), HLS ARRAY_PARTITION variable=a cyclic factor=4 (interleave across 4 BRAMs for parallel access), hls::stream<T> for task-level dataflow pipelining (producer + consumer execute concurrently). Timing closure: critical path analysis (Vivado Timing Summary), manual register insertion for retiming, Pblock constraints for DSP and BRAM placement. Deploy a custom NIC pipeline or eBPF-offload engine on FPGA: BPF maps as BRAM, BPF ALU ops as LUT logic, packet parser as state-machine RTL." },
+];
+
+const EDGES = [
+  // P0 internal / P0→P1
+  ["LA","NA"], ["DM","NT"], ["DM","CTH"], ["CA","ASM"], ["DC","ASM"], ["LA","MMT"],
+  ["CA","OST"], ["DC","OST"], ["ASM","OST"], ["DM","OST"],
+  ["OST","LKS"], ["CA","MMT"], ["OST","MMT"], ["DC","CTH"],
+  // Formal Methods prereqs
+  ["DM","FM"], ["CTH","FM"], ["CA","FM"],
+  // P1→P2
+  ["LKS","VFS"], ["LKS","SCH"], ["MMT","MMS"], ["LKS","MMS"],
+  ["LKS","DDM"], ["CA","DDM"], ["LKS","NSK"], ["LKS","BLK"],
+  ["LKS","SYN"], ["MMT","SYN"], ["LKS","SIG"],
+  // Real-Time prereqs
+  ["LKS","RT"], ["SCH","RT"],
+  // P2→P3
+  ["DC","RUST"], ["MMT","RUST"], ["SYN","LF"], ["MMT","LF"], ["CA","LF"],
+  ["NSK","EBP"], ["LKS","EBP"], ["BLK","IOU"], ["LKS","NSC"],
+  ["CTH","LLVM"], ["ASM","LLVM"], ["SYN","CPP"], ["DC","CPP"],
+  // KVM prereqs
+  ["LKS","KVM"], ["MMT","KVM"], ["DDM","KVM"], ["NSC","KVM"],
+  // P2/P3→P4
+  ["NSK","TCPI"], ["TCPI","DPD"], ["EBP","DPD"],
+  ["TCPI","BGP"], ["TCPI","VXL"], ["TCPI","QUIC"], ["RUST","QUIC"],
+  // RDMA prereqs
+  ["TCPI","RDMA"], ["DPD","RDMA"],
+  // P2/P3→P5
+  ["VFS","FSI"], ["BLK","NVME"], ["IOU","NVME"],
+  ["FSI","LSMT"], ["NVME","DBE"], ["LSMT","DBE"],
+  // P0/P2→P6
+  ["CA","GPUA"], ["CA","SIMD"], ["MMS","NUMA"], ["CA","NUMA"],
+  ["SIMD","ROOF"], ["GPUA","ROOF"], ["NUMA","HPCP"], ["GPUA","HPCP"],
+  // CXL prereqs
+  ["NUMA","CXL"], ["DDM","CXL"], ["MMS","CXL"],
+  // HETC prereqs and outgoing
+  ["GPUA","HETC"], ["SIMD","HETC"],
+  ["HETC","HPCP"], ["HETC","ROOF"],
+  // RDMA outgoing
+  ["RDMA","HPCP"], ["RDMA","DNET"], ["RDMA","DBE"],
+  // CXL outgoing
+  ["CXL","HPCP"], ["CXL","DBE"], ["CXL","PAPR"],
+  // P4+P5+P3→P7
+  ["TCPI","RAFT"], ["RUST","RAFT"], ["LF","RAFT"],
+  ["RAFT","DIST"], ["FSI","DIST"],
+  ["RAFT","CRDT"], ["LF","CRDT"],
+  ["CRDT","GOSP"], ["TCPI","DNET"], ["GOSP","DNET"],
+  // FM outgoing
+  ["FM","RAFT"], ["FM","CRDT"], ["FM","DSYS"],
+  // RT and KVM outgoing
+  ["RT","DSYS"], ["KVM","DSYS"],
+  // P2/P3→P8
+  ["LKS","LSMS"], ["NSC","LSMS"], ["EBP","LSMS"],
+  ["NT","CRYP"], ["NA","CRYP"],
+  ["LSMS","MITG"], ["MMS","MITG"],
+  ["EBP","OBS"], ["LKS","OBS"],
+  // P*→P9
+  ["LKS","KCON"], ["VFS","KCON"], ["SCH","KCON"], ["MMS","KCON"],
+  ["RAFT","DSYS"], ["DIST","DSYS"], ["LLVM","DSYS"], ["NSC","DSYS"],
+  ["DSYS","PERF"], ["HPCP","PERF"], ["ROOF","PERF"], ["NUMA","PERF"],
+  ["RAFT","PAPR"], ["DIST","PAPR"], ["GPUA","PAPR"],
+  ["EBP","PAPR"], ["PERF","PAPR"], ["KCON","PAPR"],
+  // P10 prereqs
+  ["CA","RTL"], ["DC","RTL"],
+  ["RTL","FPGA"], ["CA","FPGA"],
+  // P10 outgoing
+  ["RTL","GPUA"],
+  ["FPGA","ROOF"], ["FPGA","PAPR"],
+];
+
+const CW=280, NW=214, NH=58, RH=82, PAD_L=54, PAD_T=130, MAX_R=10;
+const SVG_W = PAD_L*2 + 11*CW;
+const SVG_H = PAD_T + MAX_R*RH + 80;
+
+function App() {
+  const [sel, setSel]     = useState(null);
+  const [hov, setHov]     = useState(null);
+  const [scale, setScale] = useState(0.42);
+  const [pan, setPan]     = useState({ x: 0, y: 0 });
+  const dragging   = useRef(false);
+  const hasDragged = useRef(false);
+  const lastPos    = useRef({ x: 0, y: 0 });
+
+  const { npos } = useMemo(() => {
+    const byPhase = {};
+    NODES.forEach(n => { if (!byPhase[n.phase]) byPhase[n.phase]=[]; byPhase[n.phase].push(n); });
+    const npos = {};
+    NODES.forEach(n => {
+      const arr = byPhase[n.phase];
+      const idx = arr.indexOf(n);
+      const startY = PAD_T + (MAX_R*RH - arr.length*RH)/2;
+      npos[n.id] = { x: PAD_L + n.phase*CW, y: startY + idx*RH };
+    });
+    return { npos };
+  }, []);
+
+  const active = sel || hov;
+  const conn = useMemo(() => {
+    if (!active) return { all: new Set(), inc: new Set(), out: new Set() };
+    const inc=new Set(), out=new Set();
+    EDGES.forEach(([s,t]) => { if (s===active) out.add(t); if (t===active) inc.add(s); });
+    return { all: new Set([active,...inc,...out]), inc, out };
+  }, [active]);
+
+  const paths = useMemo(() => EDGES.map(([s,t]) => {
+    const sp=npos[s], tp=npos[t];
+    if (!sp||!tp) return null;
+    const x1=sp.x+NW, y1=sp.y+NH/2, x2=tp.x, y2=tp.y+NH/2;
+    let d;
+    if (sp.x===tp.x) {
+      const mx=x1+60;
+      d=`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    } else {
+      const dx=(x2-x1)/2;
+      d=`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+    }
+    return { s, t, d, ph: NODES.find(n=>n.id===s).phase };
+  }).filter(Boolean), [npos]);
+
+  const onDown = useCallback(e => {
+    if (e.button!==0) return;
+    dragging.current=true; hasDragged.current=false;
+    lastPos.current={x:e.clientX,y:e.clientY};
+    e.preventDefault();
+  }, []);
+  const onMove = useCallback(e => {
+    if (!dragging.current) return;
+    const dx=e.clientX-lastPos.current.x, dy=e.clientY-lastPos.current.y;
+    if (Math.abs(dx)>4||Math.abs(dy)>4) hasDragged.current=true;
+    lastPos.current={x:e.clientX,y:e.clientY};
+    setPan(p=>({x:p.x+dx, y:p.y+dy}));
+  }, []);
+  const onUp = useCallback(() => { dragging.current=false; }, []);
+  const onWheel = useCallback(e => {
+    e.preventDefault();
+    setScale(s => Math.min(2, Math.max(0.18, s - e.deltaY*0.001)));
+  }, []);
+
+  const selNode = sel ? NODES.find(n=>n.id===sel) : null;
+  const prereqs = selNode ? EDGES.filter(([,t])=>t===sel).map(([s])=>NODES.find(n=>n.id===s)).filter(Boolean) : [];
+  const unlocks = selNode ? EDGES.filter(([s])=>s===sel).map(([,t])=>NODES.find(n=>n.id===t)).filter(Boolean) : [];
+
+  return (
+    <div style={{width:'100%',height:'100vh',background:'#050505',overflow:'hidden',
+      fontFamily:"'JetBrains Mono','Fira Mono','Courier New',monospace",
+      display:'flex',flexDirection:'column',userSelect:'none'}}>
+
+      <div style={{padding:'11px 20px',borderBottom:'1px solid #111',background:'#070707',
+        flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div>
+          <span style={{fontSize:11,fontWeight:800,color:'#f0f0f0',letterSpacing:3,textTransform:'uppercase'}}>
+            Systems Engineering Mastery Pathway
+          </span>
+          <span style={{fontSize:8,color:'#252525',marginLeft:16,letterSpacing:2}}>
+            62 NODES · 11 PHASES · 110+ EDGES · PRINCIPAL ENGINEER TRACK
+          </span>
+        </div>
+        <button onClick={()=>{setScale(0.42);setPan({x:0,y:0});}}
+          style={{background:'none',border:'1px solid #1a1a1a',color:'#333',cursor:'pointer',
+            fontSize:9,padding:'4px 10px',letterSpacing:1,borderRadius:2}}>
+          RESET VIEW
+        </button>
+      </div>
+
+      <div style={{display:'flex',padding:'5px 16px',gap:10,borderBottom:'1px solid #0d0d0d',
+        background:'#060606',flexShrink:0,flexWrap:'wrap'}}>
+        {PL.map((l,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:PC[i],flexShrink:0}}/>
+            <span style={{fontSize:7.5,color:'#252525',letterSpacing:1,whiteSpace:'nowrap'}}>P{i} {l}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{flex:1,overflow:'hidden',position:'relative',cursor:'grab'}}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onWheel={onWheel}>
+
+        <svg width={SVG_W} height={SVG_H}
+          style={{position:'absolute',top:0,left:0,
+            transform:`translate(${pan.x}px,${pan.y}px) scale(${scale})`,
+            transformOrigin:'0 0'}}>
+
+          {PL.map((l,i)=>(
+            <g key={i}>
+              <text x={PAD_L+i*CW+NW/2} y={PAD_T-56} textAnchor="middle"
+                fill={PC[i]} fontSize={9} fontFamily="monospace" fontWeight={700} letterSpacing={2} opacity={0.85}>
+                P{i}
+              </text>
+              <text x={PAD_L+i*CW+NW/2} y={PAD_T-40} textAnchor="middle"
+                fill={PC[i]+'55'} fontSize={6.5} fontFamily="monospace" letterSpacing={1}>
+                {l.toUpperCase()}
+              </text>
+              <line x1={PAD_L+i*CW} y1={PAD_T-22} x2={PAD_L+i*CW+NW} y2={PAD_T-22}
+                stroke={PC[i]+'18'} strokeWidth={1}/>
+            </g>
+          ))}
+
+          <defs>
+            {PC.map((c,i)=>(
+              <marker key={i} id={`arr${i}`} markerWidth={7} markerHeight={7} refX={6} refY={3} orient="auto">
+                <path d="M0,0 L0,6 L7,3 z" fill={c+'aa'}/>
+              </marker>
+            ))}
+          </defs>
+
+          {paths.map(({s,t,d,ph})=>{
+            const isActive = active && (s===active||t===active);
+            const isDim    = active && !conn.all.has(s) && !conn.all.has(t);
+            return (
+              <path key={`${s}-${t}`} d={d} fill="none"
+                stroke={isActive ? PC[ph]+'cc' : PC[ph]+'18'}
+                strokeWidth={isActive?1.8:0.8}
+                markerEnd={isActive?`url(#arr${ph})`:'none'}
+                opacity={isDim?0.03:1}
+                style={{transition:'all 0.13s'}}/>
+            );
+          })}
+
+          {NODES.map(n=>{
+            const pos=npos[n.id];
+            const c=PC[n.phase];
+            const isSel  = sel===n.id;
+            const isHov  = hov===n.id;
+            const isConn = active && conn.all.has(n.id) && !isSel;
+            const isDim  = active && !conn.all.has(n.id) && !isSel;
+            const isInc  = active && conn.inc.has(n.id);
+            const isOut  = active && conn.out.has(n.id);
+            return (
+              <g key={n.id} transform={`translate(${pos.x},${pos.y})`}
+                style={{cursor:'pointer'}}
+                onMouseEnter={()=>setHov(n.id)}
+                onMouseLeave={()=>setHov(null)}
+                onClick={()=>{ if(!hasDragged.current) setSel(sel===n.id?null:n.id); }}>
+                <rect width={NW} height={NH} rx={3}
+                  fill={isSel?c+'1a':isHov?c+'11':'#0c0c0c'}
+                  stroke={isSel?c:isHov?c+'88':isConn?c+'44':'#1a1a1a'}
+                  strokeWidth={isSel?1.5:isHov?1:0.8}
+                  opacity={isDim?0.18:1}
+                  style={{transition:'all 0.12s'}}/>
+                <rect width={3} height={NH} rx={1.5}
+                  fill={c+(isSel||isHov?'ff':'55')} opacity={isDim?0.18:1}/>
+                {isInc && <circle cx={0} cy={NH/2} r={3} fill={c} opacity={0.9}/>}
+                {isOut && <circle cx={NW} cy={NH/2} r={3} fill={c} opacity={0.9}/>}
+                <text x={11} y={19} fontSize={9.5} fontWeight={700}
+                  fill={isSel?c:isHov?c+'cc':'#555'} fontFamily="monospace"
+                  opacity={isDim?0.22:1} style={{transition:'all 0.12s'}}>
+                  {n.label}
+                </text>
+                <text x={11} y={32} fontSize={7} fill={isSel?'#444':isHov?'#333':'#1e1e1e'}
+                  fontFamily="monospace" opacity={isDim?0.18:1}>
+                  {n.id}
+                </text>
+                <text x={11} y={46} fontSize={6} fill={isSel?'#2d2d2d':'#161616'}
+                  fontFamily="monospace" opacity={isDim?0.12:1}>
+                  {n.sub.length>37?n.sub.slice(0,36)+'…':n.sub}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {selNode&&(
+        <div style={{position:'absolute',right:0,top:0,bottom:0,width:370,background:'#080808',
+          borderLeft:'1px solid #111',overflowY:'auto',padding:20,zIndex:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+            <div style={{flex:1,paddingRight:10}}>
+              <div style={{fontSize:7.5,color:PC[selNode.phase],letterSpacing:3,textTransform:'uppercase',marginBottom:7}}>
+                Phase {selNode.phase} · {PL[selNode.phase]}
+              </div>
+              <div style={{fontSize:14,fontWeight:800,color:'#f0f0f0',lineHeight:1.3}}>{selNode.label}</div>
+              <div style={{fontSize:8,color:'#1e1e1e',marginTop:4,letterSpacing:2}}>{selNode.id}</div>
+            </div>
+            <button onClick={()=>setSel(null)}
+              style={{background:'none',border:'none',color:'#333',cursor:'pointer',fontSize:15,padding:0,flexShrink:0}}>
+              ✕
+            </button>
+          </div>
+
+          <div style={{background:'#0d0d0d',borderLeft:`2px solid ${PC[selNode.phase]}`,
+            padding:'10px 12px',marginBottom:14,borderRadius:'0 3px 3px 0'}}>
+            <div style={{fontSize:7.5,color:'#252525',letterSpacing:2,textTransform:'uppercase',marginBottom:5}}>
+              Key Resources
+            </div>
+            <div style={{fontSize:10,color:'#505050',lineHeight:1.8}}>{selNode.sub}</div>
+          </div>
+
+          <div style={{fontSize:10.5,color:'#585858',lineHeight:1.9,marginBottom:20}}>{selNode.detail}</div>
+
+          {prereqs.length>0&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:7.5,color:'#1e1e1e',letterSpacing:2,textTransform:'uppercase',marginBottom:7}}>
+                Prerequisites ({prereqs.length})
+              </div>
+              {prereqs.map(n=>(
+                <div key={n.id} onClick={()=>setSel(n.id)}
+                  style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
+                    alignItems:'center',padding:'6px 9px',marginBottom:2,
+                    background:'#0d0d0d',borderRadius:2,borderLeft:`2px solid ${PC[n.phase]}55`}}>
+                  <span style={{fontSize:10,color:'#444'}}>{n.label}</span>
+                  <span style={{fontSize:7.5,color:'#1e1e1e',letterSpacing:1}}>P{n.phase}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {unlocks.length>0&&(
+            <div>
+              <div style={{fontSize:7.5,color:'#1e1e1e',letterSpacing:2,textTransform:'uppercase',marginBottom:7}}>
+                Unlocks ({unlocks.length})
+              </div>
+              {unlocks.map(n=>(
+                <div key={n.id} onClick={()=>setSel(n.id)}
+                  style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
+                    alignItems:'center',padding:'6px 9px',marginBottom:2,
+                    background:'#0d0d0d',borderRadius:2,borderLeft:`2px solid ${PC[n.phase]}55`}}>
+                  <span style={{fontSize:10,color:'#444'}}>{n.label}</span>
+                  <span style={{fontSize:7.5,color:'#1e1e1e',letterSpacing:1}}>P{n.phase}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
