@@ -8,6 +8,10 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #050505; overflow: hidden; }
     #root { width: 100vw; height: 100vh; }
+    .reset-view-btn:hover {
+      background: #605f5f !important;
+      transition: background 0.2s;
+    }
   </style>
 </head>
 <body>
@@ -337,23 +341,23 @@ function App() {
           <span style={{fontSize:11,fontWeight:800,color:'#f0f0f0',letterSpacing:3,textTransform:'uppercase'}}>
             Systems Engineering Mastery Pathway
           </span>
-          <span style={{fontSize:8,color:'#252525',marginLeft:16,letterSpacing:2}}>
+          <span style={{fontSize:8,color:'#c3c2c2',marginLeft:16,letterSpacing:2}}>
             62 NODES · 11 PHASES · 110+ EDGES · PRINCIPAL ENGINEER TRACK
           </span>
         </div>
-        <button onClick={()=>{setScale(0.42);setPan({x:0,y:0});}}
-          style={{background:'none',border:'1px solid #1a1a1a',color:'#333',cursor:'pointer',
+        <button class="reset-view-btn" onClick={()=>{setScale(0.42);setPan({x:0,y:0});}}
+          style={{background:'none',border:'1px solid #4e4e4e',color:'#f0f0f0',cursor:'pointer',
             fontSize:9,padding:'4px 10px',letterSpacing:1,borderRadius:2}}>
           RESET VIEW
         </button>
       </div>
 
-      <div style={{display:'flex',padding:'5px 16px',gap:10,borderBottom:'1px solid #0d0d0d',
+      <div style={{display:'flex',padding:'5px 16px',gap:10,borderBottom:'1px solid #605f5f',
         background:'#060606',flexShrink:0,flexWrap:'wrap'}}>
         {PL.map((l,i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:5}}>
             <div style={{width:6,height:6,borderRadius:'50%',background:PC[i],flexShrink:0}}/>
-            <span style={{fontSize:7.5,color:'#252525',letterSpacing:1,whiteSpace:'nowrap'}}>P{i} {l}</span>
+            <span style={{fontSize:7.5,color:'#777676',letterSpacing:1,whiteSpace:'nowrap'}}>P{i} {l}</span>
           </div>
         ))}
       </div>
@@ -374,11 +378,11 @@ function App() {
                 P{i}
               </text>
               <text x={PAD_L+i*CW+NW/2} y={PAD_T-40} textAnchor="middle"
-                fill={PC[i]+'55'} fontSize={6.5} fontFamily="monospace" letterSpacing={1}>
+                fill={PC[i]} fontSize={6.5} fontFamily="monospace" letterSpacing={1}>
                 {l.toUpperCase()}
               </text>
               <line x1={PAD_L+i*CW} y1={PAD_T-22} x2={PAD_L+i*CW+NW} y2={PAD_T-22}
-                stroke={PC[i]+'18'} strokeWidth={1}/>
+                stroke={PC[i]+'55'} strokeWidth={1}/>
             </g>
           ))}
 
@@ -429,7 +433,7 @@ function App() {
                 {isInc && <circle cx={0} cy={NH/2} r={3} fill={c} opacity={0.9}/>}
                 {isOut && <circle cx={NW} cy={NH/2} r={3} fill={c} opacity={0.9}/>}
                 <text x={11} y={19} fontSize={9.5} fontWeight={700}
-                  fill={isSel?c:isHov?c+'cc':'#555'} fontFamily="monospace"
+                  fill={isSel?c:isHov?c+'cc':'#808080'} fontFamily="monospace"
                   opacity={isDim?0.22:1} style={{transition:'all 0.12s'}}>
                   {n.label}
                 </text>
